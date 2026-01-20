@@ -1,0 +1,6 @@
+crewai 
+crewai-tools 
+langchain-ollama 
+python-dotenv
+litellm
+openai~=1.83.0
