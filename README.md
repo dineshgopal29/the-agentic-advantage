@@ -121,3 +121,7 @@ Adds quality control through evaluation and iteration. Improves output quality t
 ## License
 
 This project is for educational and demonstration purposes.
+
+## Jev as a LangChain classifier
+
+[`jev_langchain/`](jev_langchain/) shows TypeSafe's Jev (a System One classifier) used through LangChain for loan-email triage. It needs only `TYPESAFE_API_KEY` in your environment, not a chat-model key. See its README.
