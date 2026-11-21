@@ -23,7 +23,6 @@ Each run makes `2 x efforts x repeats` API calls, which costs money.
 
 ## Caveats
 
-- The `effort` parameter is sent with `extra_body` because the guide describes it as a top-level request value. This has not been verified against a live call; if the API rejects it, adjust `build_kwargs()`.
-- Effort names (`low`, `medium`, `xhigh`, `max`) are taken from the guide. Confirm them in the API reference.
+- `effort` is sent as `output_config={"effort": ...}`, which matches the Anthropic Python SDK's type definitions (checked against v2.12.0). No live call has been made yet. The SDK lists `low`, `medium`, `high`, `xhigh` and `max`; the script asks the models API which of them Opus 5.5 supports and skips the rest.
 - Latency depends on load and network; use several repeats and compare medians.
 - This script has not been executed by the author of the post yet. Its results will be published in a follow-up.

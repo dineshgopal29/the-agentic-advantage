@@ -6,10 +6,11 @@ token usage reported by the API. There are no simulated or hardcoded results.
 Needs ANTHROPIC_API_KEY. Each run makes len(variants) x len(efforts) x repeats calls,
 so it costs money: start with --repeats 1.
 
-NOT VERIFIED: how `effort` is passed. Anthropic's "Prompting Claude Opus 5.5" guide describes
-it as a top-level request value, so this script sends it with extra_body. If the API rejects
-it, check the API reference and adjust build_kwargs(). The effort names below (low, medium,
-xhigh, max) are the ones the guide lists for Opus 5.5; confirm them too.
+Effort is passed as `output_config={"effort": ...}`, which is how the Anthropic Python SDK
+(checked against v2.12.0 type definitions) models it. Accepted values in the SDK types are
+low, medium, high, xhigh and max; which of them a given model accepts is reported by the
+models API, and this script checks that before spending anything. It has still NOT been run
+against a live call.
 
 Quality is NOT scored here. Use --save-outputs and compare the answers yourself (or with
 your own eval) before drawing conclusions about cost versus quality.
@@ -50,8 +51,25 @@ def build_kwargs(prompt: str, effort: str, max_tokens: int) -> dict:
         "model": MODEL,
         "max_tokens": max_tokens,  # thinking counts toward max_tokens, so keep this generous
         "messages": [{"role": "user", "content": prompt}],
-        "extra_body": {"effort": effort},
+        "output_config": {"effort": effort},
     }
+
+
+def supported_efforts(client: anthropic.Anthropic, requested: list[str]) -> list[str]:
+    """Ask the models API which effort levels MODEL supports (free, no tokens). Falls back to the request."""
+    try:
+        effort_cap = client.models.retrieve(MODEL).capabilities.effort
+    except Exception as e:  # capabilities may be unavailable; do not block the run
+        print(f"(could not read model capabilities: {e}; using requested efforts as given)")
+        return requested
+    ok = []
+    for level in requested:
+        support = getattr(effort_cap, level, None)
+        if support is not None and getattr(support, "supported", False):
+            ok.append(level)
+        else:
+            print(f"Skipping effort '{level}': not supported by {MODEL} according to the models API")
+    return ok
 
 
 def run_once(client: anthropic.Anthropic, prompt: str, effort: str, max_tokens: int):
@@ -88,6 +106,11 @@ def main() -> int:
     task = Path(args.task_file).read_text().strip() if args.task_file else DEFAULT_TASK
     efforts = [e.strip() for e in args.efforts.split(",") if e.strip()]
     client = anthropic.Anthropic()
+    efforts = supported_efforts(client, efforts)
+    if not efforts:
+        print("No supported effort levels to test.", file=sys.stderr)
+        return 1
+    print(f"Model {MODEL}; testing effort levels: {', '.join(efforts)}")
     out_dir = Path("outputs")
     if args.save_outputs:
         out_dir.mkdir(exist_ok=True)
